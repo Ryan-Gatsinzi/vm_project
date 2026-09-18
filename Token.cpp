@@ -73,5 +73,5 @@ int Token::getLineNumber() { return line_number; }
 std::any Token::getLiteral(){ return literal;}
 
 std::string_view Token::to_string(){
-    return "Lexeme: " + lexeme + "; Line number: " + std::to_string(line_number) + "; token type: " + stringifyTokenType(token_type) + "\n";
+    return "Lexeme: " + lexeme + ", Line number: " + std::to_string(line_number) + ", token type: " + stringifyTokenType(token_type) + "\n";
 }

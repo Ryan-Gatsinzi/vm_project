@@ -1,21 +1,26 @@
 #pragma once
-
-#include "Scanner.h";
-#include <cctype>;
+#include "Scanner.h"
+#include <map>
+#include <cctype>
+#include <iostream>
 
 Scanner::Scanner(std::string source_code) : source_code(source_code), start(0), current(0), line_number(0) {}
 
-const std::vector<Token>& Scanner::scan(){
+std::vector<Token> Scanner::scan(){
     while(start < source_code.length()){
+        if(start == 0 && source_code.size() > 0) line_number++;
+
         scan_tokens();
         start = current;
     }
+    
+    
     tokens.push_back(Token("", TokenType::ENDOFFILE, line_number+1, std::any()));
     return tokens;
 }
 
 void Scanner::scan_tokens(){
-    char current_char = source_code[current];
+    char current_char = source_code[current++];
     switch(current_char){
         //single char tokens
         case '+': addToken(std::string(1, current_char), TokenType::PLUS, std::any()); break;
@@ -36,19 +41,91 @@ void Scanner::scan_tokens(){
         //literals
 
         default: 
-        if(isalpha(current_char))
-            hanldeString();
+        if(current_char == '"')
+            handleString();
         else if(isdigit(current_char))
-            handleNumbers();
+            handleNumber();
+        else if(isalpha(current_char) || current_char == '_')
+            handleIdentifier();
         else
-            // throw error
+            throw "Invalid charcater: " + current_char;
     }
 }
 
-char Scanner::peekAhead(int pos = 0){
+char Scanner::peekAhead(int pos){
     int index = current + pos;
     return (index < source_code.length() ? source_code[index] : source_code[source_code.length() - 1]);
 }
 void Scanner::addToken(std::string lexeme, TokenType token_type, const std::any& literal){
     tokens.push_back(Token(lexeme, token_type, line_number, literal));
 }
+
+void Scanner::handleString(){
+    while(peekAhead() != '"') {
+        current++;
+    }
+        
+    start++; // jump over the opening "
+    std::string str = source_code.substr(start, current-start);
+    current++; // jump over the closing " and avoid attempting to read a string again
+
+    addToken(str, TokenType::STRING, str);
+        
+}
+
+void Scanner::handleNumber(){
+    bool decimal_found = false;
+    char next_char = peekAhead();
+
+    while(isdigit(next_char) || (next_char == '.' && !decimal_found)){
+        if(next_char == '.') 
+            decimal_found = true;
+
+        current++;
+
+        if(next_char == '\n') line_number++;
+
+        next_char = peekAhead();
+    }
+    
+    std::string num = source_code.substr(start, current);
+    addToken(num, TokenType::NUMBER, std::stoi(num));
+}
+
+void Scanner::handleIdentifier(){
+    std::map<std::string, TokenType> keywords = {
+        {"and", TokenType::AND},
+        {"Class", TokenType::CLASS,},
+        {"else", TokenType::ELSE},
+        {"false", TokenType::FALSE},
+        {"fun", TokenType::FUN},
+        {"for", TokenType::FOR},
+        {"if", TokenType::IF},
+        {"nil", TokenType::NIL},
+        {"or", TokenType::OR},
+        {"print", TokenType::PRINT},
+        {"return", TokenType::RETURN},
+        {"super", TokenType::SUPER},
+        {"this", TokenType::THIS},
+        {"true", TokenType::TRUE},
+        {"var", TokenType::VAR},
+        {"while", TokenType::WHILE},
+        {"eof", TokenType::ENDOFFILE},
+    };
+    
+    char next_char = peekAhead();
+    while(isalpha(next_char) || isdigit(next_char) || next_char == '_'){
+        current++; //consume character
+       
+       if(next_char == '\n') line_number++;
+        
+        next_char = peekAhead();
+    }
+
+    std::string identifier = source_code.substr(start, current-start);
+    TokenType token_type = (keywords.find(identifier) == keywords.end() ?  TokenType::IDENTIFIER : keywords.at(identifier));
+
+    addToken(identifier, token_type, {});
+}
+
+std::vector<Token> Scanner::get_tokens(){ return tokens; }
